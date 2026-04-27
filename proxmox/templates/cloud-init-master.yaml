@@ -1,0 +1,22 @@
+#cloud-config
+# This cloud-init configuration sets up the Kubernetes master node.
+
+package_update: true
+package_upgrade: true
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - software-properties-common
+  - kubelet
+  - kubeadm
+  - kubectl
+
+runcmd:
+  - kubeadm init --pod-network-cidr=192.168.0.0/16
+  - mkdir -p $HOME/.kube
+  - cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  - chown $(id -u):$(id -g) $HOME/.kube/config
+  - kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+final_message: "The Kubernetes master node has been initialized."
