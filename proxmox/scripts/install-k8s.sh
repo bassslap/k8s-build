@@ -79,6 +79,10 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 echo "[$(hostname)] Installing Calico CNI..."
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 
+echo "[$(hostname)] Installing local-path storage provisioner..."
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
 echo "[$(hostname)] Generating join command..."
 kubeadm token create --print-join-command > /tmp/join-command.sh
 chmod 644 /tmp/join-command.sh
@@ -87,7 +91,7 @@ echo "[$(hostname)] ✓ Master initialization complete"
 '
 
 echo "=========================================="
-echo "Step 1/5: Installing prerequisites on all nodes"
+echo "Step 1/6: Installing prerequisites on all nodes"
 echo "=========================================="
 
 echo "→ Master ($MASTER_IP)..."
@@ -103,20 +107,20 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o
 
 echo ""
 echo "=========================================="
-echo "Step 2/5: Initializing master node"
+echo "Step 2/6: Initializing master node"
 echo "=========================================="
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" "$MASTER_INIT"
 
 echo ""
 echo "=========================================="
-echo "Step 3/5: Retrieving join command"
+echo "Step 3/6: Retrieving join command"
 echo "=========================================="
 JOIN_COMMAND=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'cat /tmp/join-command.sh')
 echo "Join command: $JOIN_COMMAND"
 
 echo ""
 echo "=========================================="
-echo "Step 4/5: Joining worker nodes to cluster"
+echo "Step 4/6: Joining worker nodes to cluster"
 echo "=========================================="
 
 echo "→ Worker 1 ($WORKER1_IP)..."
@@ -128,12 +132,30 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o
 
 echo ""
 echo "=========================================="
-echo "Step 5/5: Verifying cluster status"
+echo "Step 5/6: Installing storage provisioner"
+echo "=========================================="
+echo "Waiting 20 seconds for Calico to initialize..."
+sleep 20
+
+echo "Installing local-path storage class..."
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml'
+
+echo "Setting local-path as default storage class..."
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'kubectl patch storageclass local-path -p '"'"'{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'"'"''
+
+echo ""
+echo "=========================================="
+echo "Step 6/6: Verifying cluster status"
 echo "=========================================="
 echo "Waiting 30 seconds for nodes to register..."
 sleep 30
 
+echo "Cluster nodes:"
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'kubectl get nodes -o wide'
+
+echo ""
+echo "Storage classes:"
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'kubectl get storageclass'
 
 echo ""
 echo "=========================================="
