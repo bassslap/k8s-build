@@ -1,3 +1,6 @@
+// Legacy file: root stack in ../../main.tf is the active split-approach deployment path.
+// This file is retained for reference only and uses older resource/provider patterns.
+
 resource "proxmox_vm_qemu" "k8s_master" {
   name        = "k8s-master"
   target_node = "proxmox-node"

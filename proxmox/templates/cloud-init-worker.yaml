@@ -1,24 +1,89 @@
-#cloud-init configuration for Kubernetes worker nodes
-# This script will be executed on the worker nodes to join the Kubernetes cluster
+#cloud-config
+# Kubernetes worker node cloud-init configuration
+# This runs at first boot to install K8s and join the cluster
 
-# Set the hostname
-hostnamectl set-hostname worker-node
+write_files:
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+  - path: /etc/sysctl.d/k8s.conf
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+  - path: /etc/containerd/config.toml
+    content: |
+      version = 2
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+          SystemdCgroup = true
+  - path: /usr/local/bin/k8s-worker-join.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      
+      MASTER_IP="${master_ip}"
+      
+      echo "[$(date)] Starting K8s worker join process" | tee -a /var/log/k8s-join.log
+      
+      # Wait for kubeadm to be available
+      while ! command -v kubeadm &>/dev/null; do
+        echo "[$(date)] Waiting for kubeadm..." | tee -a /var/log/k8s-join.log
+        sleep 5
+      done
+      
+      # Wait for master to generate join command
+      echo "[$(date)] Waiting for master to be ready..." | tee -a /var/log/k8s-join.log
+      for i in $(seq 1 60); do
+        if curl -sf "http://$MASTER_IP/join-command.sh" -o /tmp/join-command.sh 2>/dev/null; then
+          echo "[$(date)] Join command retrieved from master" | tee -a /var/log/k8s-join.log
+          break
+        fi
+        echo "[$(date)] Master not ready yet (attempt $i/60)..." | tee -a /var/log/k8s-join.log
+        sleep 10
+      done
+      
+      if [[ ! -f /tmp/join-command.sh ]]; then
+        echo "[$(date)] ERROR: Failed to retrieve join command from master" | tee -a /var/log/k8s-join.log
+        exit 1
+      fi
+      
+      # Execute join command
+      echo "[$(date)] Joining cluster..." | tee -a /var/log/k8s-join.log
+      bash /tmp/join-command.sh 2>&1 | tee -a /var/log/k8s-join.log
+      
+      echo "[$(date)] Successfully joined cluster!" | tee -a /var/log/k8s-join.log
 
-# Install necessary packages
-apt-get update && apt-get install -y apt-transport-https ca-certificates curl
+runcmd:
+  # Disable swap
+  - swapoff -a
+  - sed -i '/ swap / s/^/#/' /etc/fstab
+  
+  # Load kernel modules
+  - modprobe overlay
+  - modprobe br_netfilter
+  - sysctl --system
+  
+  # Install containerd
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y containerd apt-transport-https ca-certificates curl gpg
+  - mkdir -p /etc/containerd
+  - containerd config default > /etc/containerd/config.toml.bak
+  - systemctl restart containerd
+  - systemctl enable containerd
+  
+  # Install Kubernetes packages
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/${k8s_version}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${k8s_version}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl
+  - apt-mark hold kubelet kubeadm kubectl
+  - systemctl enable kubelet
+  
+  # Run join script in background
+  - nohup /usr/local/bin/k8s-worker-join.sh &
 
-# Add Kubernetes APT repository
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-cat <<EOF >/etc/apt/sources.list.d/kubernetes.list
-deb https://apt.kubernetes.io/ kubernetes-xenial main
-EOF
-
-# Install kubelet, kubeadm, and kubectl
-apt-get update
-apt-get install -y kubelet kubeadm kubectl
-apt-mark hold kubelet kubeadm kubectl
-
-# Join the Kubernetes cluster
-# The join command will be provided by the master node during initialization
-echo "Please run the following command to join the cluster:"
-echo "kubeadm join <master-ip>:<master-port> --token <token> --discovery-token-ca-cert-hash sha256:<hash>"
+final_message: "Kubernetes worker node setup initiated. Check /var/log/k8s-join.log for progress."

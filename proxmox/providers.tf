@@ -1,12 +1,11 @@
 provider "proxmox" {
-  pm_api_url      = var.pm_api_url
-  pm_user         = var.pm_user
-  pm_password     = var.pm_password
-  pm_tls_insecure = true
-}
+  endpoint  = try(var.proxmox.endpoint, "https://${var.proxmox_host}:8006")
+  api_token = try(var.proxmox.api_token_id, "${var.api_user}!${var.api_token_name}") != "" ? "${try(var.proxmox.api_token_id, "${var.api_user}!${var.api_token_name}")}=${try(var.proxmox.api_token_secret, var.api_token_value)}" : var.proxmox_api_token
+  insecure  = true
 
-provider "kubernetes" {
-  host                   = module.kube-bootstrap.kubeconfig["host"]
-  token                  = module.kube-bootstrap.kubeconfig["token"]
-  cluster_ca_certificate = base64decode(module.kube-bootstrap.kubeconfig["cluster_ca_certificate"])
+  ssh {
+    agent       = true
+    username    = "root"
+    private_key = file("~/.ssh/id_rsa")
+  }
 }

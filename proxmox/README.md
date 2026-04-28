@@ -1,33 +1,25 @@
 # Kubernetes on Proxmox with OpenTofu
 
-This project automates the deployment of a Kubernetes cluster on a Proxmox server using OpenTofu. It provisions a Kubernetes master node and two worker nodes using Terraform.
+This project uses a split approach:
+
+- Terraform provisions and configures VMs (IDs, CPU/memory, networking, cloud-init user account).
+- A bootstrap script installs and configures Kubernetes (init control plane, join workers).
 
 ## Project Structure
 
-- **modules/**: Contains reusable Terraform modules.
-  - **proxmox-vm/**: Module for creating virtual machines on Proxmox.
-  - **kube-bootstrap/**: Module for bootstrapping the Kubernetes cluster.
+- **main.tf**: Active root deployment stack (bpg/proxmox provider + VM provisioning + bootstrap trigger).
+- **scripts/bootstrap-k8s.sh**: Active Kubernetes bootstrap path.
+- **terraform.tfvars**: Active default input file used by root runs.
 
-- **environments/**: Contains environment-specific configurations.
-  - **production/**: Configuration for the production environment.
+- **environments/production/**: Legacy path kept for reference. Root stack is the supported path.
 
-- **templates/**: Contains cloud-init templates for initializing the VMs.
-  - **cloud-init-master.yaml**: Cloud-init configuration for the master node.
-  - **cloud-init-worker.yaml**: Cloud-init configuration for the worker nodes.
+- **templates/**: Legacy cloud-init templates (not used by active root stack).
 
 - **scripts/**: Contains scripts for initializing the master and joining worker nodes.
   - **init-master.sh**: Script to initialize the Kubernetes master.
   - **join-worker.sh**: Script for worker nodes to join the cluster.
 
-- **providers.tf**: Specifies the providers used in the Terraform configuration.
-
-- **versions.tf**: Defines the required Terraform and provider versions.
-
-- **variables.tf**: Contains global input variables for the project.
-
-- **main.tf**: Entry point for the Terraform configuration.
-
-- **outputs.tf**: Specifies the overall outputs for the project.
+- **providers.tf / versions.tf / variables.tf / outputs.tf**: Root stack config files.
 
 ## Prerequisites
 
@@ -43,8 +35,8 @@ This project automates the deployment of a Kubernetes cluster on a Proxmox serve
    cd k8s-build/proxmox
    ```
 
-2. **Configure Variables**: 
-   Update the `environments/production/tofu.tfvars` file with your desired configurations, including VM specifications and network settings.
+2. **Configure Variables**:
+   Update `terraform.tfvars` with your desired Proxmox and VM settings.
 
 3. **Initialize Terraform**: 
    Run the following command to initialize the Terraform configuration:
@@ -52,17 +44,25 @@ This project automates the deployment of a Kubernetes cluster on a Proxmox serve
    tofu init
    ```
 
-4. **Plan the Deployment**: 
+4. **Plan the Deployment**:
    Generate an execution plan to see what resources will be created:
    ```bash
-   tofu plan -var-file=environments/production/tofu.tfvars
+   tofu plan
    ```
 
 5. **Apply the Configuration**: 
    Deploy the Kubernetes cluster by applying the configuration:
    ```bash
-   tofu apply -var-file=environments/production/tofu.tfvars
+   tofu apply
    ```
+
+## How Split Approach Works
+
+1. Terraform creates VMs and configures static IPs and user credentials.
+2. `null_resource.kube_bootstrap` runs `scripts/bootstrap-k8s.sh`.
+3. Script waits for SSH, installs containerd/kubeadm/kubelet/kubectl, initializes master, and joins workers.
+
+This keeps VM provisioning and Kubernetes bootstrap loosely coupled and easier to debug.
 
 ## Usage
 

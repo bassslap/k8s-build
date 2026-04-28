@@ -1,0 +1,36 @@
+# Example tfvars file for k8s-build Proxmox deployment
+# Copy this file to terraform.tfvars and fill in your actual values
+
+proxmox = {
+  endpoint         = "https://YOUR_PROXMOX_IP:8006"
+  api_token_id     = "YOUR_USER@pve!YOUR_TOKEN_NAME"
+  api_token_secret = "YOUR_TOKEN_SECRET"
+  node_name        = "pve"
+  public_key_file  = "~/.ssh/id_rsa.pub"
+  template_id      = 9001  # Your Ubuntu cloud-init template ID
+}
+
+# VM IDs
+master_vmid  = 251
+worker_vmids = [252, 253]
+
+# Network configuration
+master_ip    = "10.100.1.101"
+worker_ips   = ["10.100.1.102", "10.100.1.103"]
+gateway      = "10.100.0.1"
+dns_servers  = ["8.8.8.8", "8.8.4.4"]
+
+# VM credentials
+vm_user_password = "your_password_here"
+
+# Kubernetes configuration
+kubernetes_version = "1.30.0"
+pod_network_cidr   = "10.244.0.0/16"
+
+# VM resources
+vm_memory    = 16384  # 16GB RAM per VM
+vm_cpu       = 8      # 8 vCPU per VM
+vm_disk_size = 20     # 20GB disk per VM
+
+# Network
+network_bridge = "vmbr0"

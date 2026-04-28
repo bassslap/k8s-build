@@ -1,22 +1,95 @@
 #cloud-config
-# This cloud-init configuration sets up the Kubernetes master node.
+# Kubernetes master node cloud-init configuration
+# This runs at first boot to install and initialize the K8s control plane
 
-package_update: true
-package_upgrade: true
-packages:
-  - apt-transport-https
-  - ca-certificates
-  - curl
-  - software-properties-common
-  - kubelet
-  - kubeadm
-  - kubectl
+write_files:
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+  - path: /etc/sysctl.d/k8s.conf
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+  - path: /etc/containerd/config.toml
+    content: |
+      version = 2
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+          SystemdCgroup = true
+  - path: /usr/local/bin/k8s-master-init.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      
+      echo "[$(date)] Starting K8s master initialization" | tee -a /var/log/k8s-init.log
+      
+      # Wait for kubeadm to be available
+      while ! command -v kubeadm &>/dev/null; do
+        echo "[$(date)] Waiting for kubeadm..." | tee -a /var/log/k8s-init.log
+        sleep 5
+      done
+      
+      # Initialize the control plane
+      echo "[$(date)] Running kubeadm init..." | tee -a /var/log/k8s-init.log
+      kubeadm init --pod-network-cidr=${pod_cidr} 2>&1 | tee -a /var/log/k8s-init.log
+      
+      # Set up kubeconfig for ubuntu user
+      mkdir -p /home/ubuntu/.kube
+      cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+      chown -R ubuntu:ubuntu /home/ubuntu/.kube
+      
+      # Set up kubeconfig for root
+      mkdir -p /root/.kube
+      cp /etc/kubernetes/admin.conf /root/.kube/config
+      
+      # Apply Calico CNI
+      echo "[$(date)] Applying Calico CNI..." | tee -a /var/log/k8s-init.log
+      kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml 2>&1 | tee -a /var/log/k8s-init.log
+      
+      # Generate and save join command
+      echo "[$(date)] Generating join command..." | tee -a /var/log/k8s-init.log
+      kubeadm token create --print-join-command > /var/www/html/join-command.sh 2>&1 | tee -a /var/log/k8s-init.log
+      chmod 644 /var/www/html/join-command.sh
+      
+      echo "[$(date)] K8s master initialization complete!" | tee -a /var/log/k8s-init.log
 
 runcmd:
-  - kubeadm init --pod-network-cidr=192.168.0.0/16
-  - mkdir -p $HOME/.kube
-  - cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-  - chown $(id -u):$(id -g) $HOME/.kube/config
-  - kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  # Disable swap
+  - swapoff -a
+  - sed -i '/ swap / s/^/#/' /etc/fstab
+  
+  # Load kernel modules
+  - modprobe overlay
+  - modprobe br_netfilter
+  - sysctl --system
+  
+  # Install containerd
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y containerd apt-transport-https ca-certificates curl gpg
+  - mkdir -p /etc/containerd
+  - containerd config default > /etc/containerd/config.toml.bak
+  - systemctl restart containerd
+  - systemctl enable containerd
+  
+  # Install Kubernetes packages
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/${k8s_version}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${k8s_version}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y kubelet kubeadm kubectl
+  - apt-mark hold kubelet kubeadm kubectl
+  - systemctl enable kubelet
+  
+  # Install nginx to serve join command
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+  - mkdir -p /var/www/html
+  - systemctl enable nginx
+  - systemctl start nginx
+  
+  # Run initialization script in background
+  - nohup /usr/local/bin/k8s-master-init.sh &
 
-final_message: "The Kubernetes master node has been initialized."
+final_message: "Kubernetes master node setup initiated. Check /var/log/k8s-init.log for progress."

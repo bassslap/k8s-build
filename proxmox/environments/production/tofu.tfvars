@@ -1,7 +1,20 @@
-master_ip = "192.168.1.100"
-worker_ips = ["192.168.1.101", "192.168.1.102"]
-kubernetes_version = "1.24.0"
-vm_memory = "2048"
-vm_cpu = "2"
-vm_disk_size = "20G"
-network_bridge = "vmbr0"
+proxmox_host    = "10.100.0.10"
+api_user        = "admin@pve"
+api_token_name  = "admin"
+api_token_value = "c4b2bc64-9f8e-4cae-9e16-b45451f14878"
+proxmox_node    = "pve"
+public_key_file = "~/.ssh/id_rsa.pub"
+template_id     = 9001
+master_ip       = "10.100.1.101"
+worker_ips      = ["10.100.1.102", "10.100.1.103"]
+gateway         = "10.100.0.1"
+dns_servers     = ["8.8.8.8", "8.8.4.4"]
+master_vmid     = 251
+worker_vmids    = [252, 253]
+vm_user_password = "ubuntu123!"
+
+kubernetes_version = "1.30.0"
+vm_memory          = 16384
+vm_cpu             = 8
+vm_disk_size       = 20
+network_bridge     = "vmbr0"
