@@ -27,6 +27,11 @@ vm_user_password = "your_password_here"
 kubernetes_version = "1.30.0"
 pod_network_cidr   = "10.244.0.0/16"
 
+# Automated installation
+# Set to true to automatically install Kubernetes after VM provisioning
+# Set to false to install manually using scripts/install-k8s.sh
+bootstrap_enabled = true
+
 # VM resources
 vm_memory    = 16384  # 16GB RAM per VM
 vm_cpu       = 8      # 8 vCPU per VM

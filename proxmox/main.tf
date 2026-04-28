@@ -81,6 +81,31 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
   }
 }
 
+# Automated Kubernetes installation
+resource "null_resource" "kubernetes_install" {
+  count = var.bootstrap_enabled ? 1 : 0
+
+  depends_on = [
+    proxmox_virtual_environment_vm.k8s_master,
+    proxmox_virtual_environment_vm.k8s_worker
+  ]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Waiting for VMs to be ready..."
+      bash ${path.module}/scripts/wait-for-vms.sh
+      
+      echo "Installing Kubernetes cluster..."
+      bash ${path.module}/scripts/install-k8s.sh ${var.master_ip} ${var.worker_ips[0]} ${var.worker_ips[1]}
+    EOT
+  }
+
+  triggers = {
+    master_id  = proxmox_virtual_environment_vm.k8s_master.id
+    worker_ids = join(",", proxmox_virtual_environment_vm.k8s_worker[*].id)
+  }
+}
+
 output "master_ip" {
   value = var.master_ip
 }

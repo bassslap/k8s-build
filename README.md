@@ -28,6 +28,8 @@ Automated deployment of a production-ready 3-node Kubernetes cluster on Proxmox 
 
 ### Deploy
 
+**Option 1: Fully Automated (Recommended)**
+
 ```bash
 # Clone repository
 git clone https://github.com/bassslap/k8s-build.git
@@ -36,12 +38,30 @@ cd k8s-build/proxmox
 # Configure variables
 cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your Proxmox details
+# Set: bootstrap_enabled = true
 
-# Deploy infrastructure
+# Deploy infrastructure and install Kubernetes automatically
+tofu init
+tofu apply -auto-approve
+```
+
+**Option 2: Manual Installation**
+
+```bash
+# Clone repository
+git clone https://github.com/bassslap/k8s-build.git
+cd k8s-build/proxmox
+
+# Configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Proxmox details
+# Set: bootstrap_enabled = false (or omit)
+
+# Deploy infrastructure only
 tofu init
 tofu apply -auto-approve
 
-# Install Kubernetes
+# Install Kubernetes manually
 bash scripts/wait-for-vms.sh
 bash scripts/install-k8s.sh
 ```
