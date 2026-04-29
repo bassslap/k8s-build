@@ -57,9 +57,10 @@ write_files:
       echo "[$(date)] K8s master initialization complete!" | tee -a /var/log/k8s-init.log
 
 runcmd:
-  # Disable swap
+  # Disable swap permanently
   - swapoff -a
-  - sed -i '/ swap / s/^/#/' /etc/fstab
+  - sed -i '/swap/d' /etc/fstab
+  - rm -f /swap.img
   
   # Load kernel modules
   - modprobe overlay

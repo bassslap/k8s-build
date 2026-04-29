@@ -19,9 +19,12 @@ echo ""
 COMMON_SETUP='
 set -euo pipefail
 
-echo "[$(hostname)] Disabling swap..."
+echo "[$(hostname)] Disabling swap permanently..."
 sudo swapoff -a
-sudo sed -i "/ swap / s/^/#/" /etc/fstab
+sudo sed -i "/swap/d" /etc/fstab
+if [ -f /swap.img ]; then
+  sudo rm -f /swap.img
+fi
 
 echo "[$(hostname)] Loading kernel modules..."
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -81,7 +84,7 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/
 
 echo "[$(hostname)] Installing local-path storage provisioner..."
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-storage.yaml
-kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass local-path -p '"'"'{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'"'"'
 
 echo "[$(hostname)] Generating join command..."
 kubeadm token create --print-join-command > /tmp/join-command.sh

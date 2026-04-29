@@ -57,9 +57,10 @@ write_files:
       echo "[$(date)] Successfully joined cluster!" | tee -a /var/log/k8s-join.log
 
 runcmd:
-  # Disable swap
+  # Disable swap permanently
   - swapoff -a
-  - sed -i '/ swap / s/^/#/' /etc/fstab
+  - sed -i '/swap/d' /etc/fstab
+  - rm -f /swap.img
   
   # Load kernel modules
   - modprobe overlay
