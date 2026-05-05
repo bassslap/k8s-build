@@ -55,7 +55,7 @@ sudo systemctl enable containerd >/dev/null 2>&1
 
 echo "[$(hostname)] Adding Kubernetes repository..."
 sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
 
 echo "[$(hostname)] Installing kubelet, kubeadm, kubectl..."
@@ -97,6 +97,13 @@ echo "=========================================="
 echo "Step 1/6: Installing prerequisites on all nodes"
 echo "=========================================="
 
+echo "Waiting for cloud-init to complete on all nodes..."
+for ip in ${MASTER_IP} ${WORKER1_IP} ${WORKER2_IP}; do
+    echo "→ Waiting for cloud-init on $ip..."
+    ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${ip}" 'cloud-init status --wait' || true
+done
+
+echo ""
 echo "→ Master ($MASTER_IP)..."
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" "$COMMON_SETUP"
 
