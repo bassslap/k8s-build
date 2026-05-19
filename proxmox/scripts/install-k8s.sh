@@ -137,6 +137,9 @@ echo "→ Worker 1 ($WORKER1_IP)..."
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${WORKER1_IP}" "sudo $JOIN_COMMAND"
 
 echo ""
+echo "Waiting 10 seconds before joining next worker..."
+sleep 10
+
 echo "→ Worker 2 ($WORKER2_IP)..."
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${WORKER2_IP}" "sudo $JOIN_COMMAND"
 
@@ -157,8 +160,8 @@ echo ""
 echo "=========================================="
 echo "Step 6/6: Verifying cluster status"
 echo "=========================================="
-echo "Waiting 30 seconds for nodes to register..."
-sleep 30
+echo "Waiting 45 seconds for nodes to register..."
+sleep 45
 
 echo "Cluster nodes:"
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR "${SSH_USER}@${MASTER_IP}" 'kubectl get nodes -o wide'
