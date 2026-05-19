@@ -2,6 +2,7 @@ resource "proxmox_vm_qemu" "k8s_master" {
   name        = "k8s-master"
   target_node = var.proxmox_node
   clone       = var.template_id
+  cpu         = "x86-64-v2-AES"
   cores       = var.master_cores
   memory      = var.master_memory
   net0        = "virtio,bridge=${var.network_bridge},ip=${var.master_ip},gw=${var.gateway}"
@@ -16,6 +17,7 @@ resource "proxmox_vm_qemu" "k8s_worker" {
   name        = "k8s-worker-${count.index + 1}"
   target_node = var.proxmox_node
   clone       = var.template_id
+  cpu         = "x86-64-v2-AES"
   cores       = var.worker_cores
   memory      = var.worker_memory
   net0        = "virtio,bridge=${var.network_bridge},ip=${element(var.worker_ips, count.index)},gw=${var.gateway}"

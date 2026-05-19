@@ -9,6 +9,7 @@ resource "proxmox_virtual_environment_vm" "k8s_master" {
 
   cpu {
     cores = var.vm_cpu
+    type  = "x86-64-v2-AES"
   }
 
   memory {
@@ -51,6 +52,7 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 
   cpu {
     cores = var.vm_cpu
+    type  = "x86-64-v2-AES"
   }
 
   memory {

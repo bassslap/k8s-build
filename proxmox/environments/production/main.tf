@@ -5,6 +5,7 @@ resource "proxmox_vm_qemu" "k8s_master" {
   name        = "k8s-master"
   target_node = "proxmox-node"
   clone       = "ubuntu24-template-9001"
+  cpu         = "x86-64-v2-AES"
   cores       = 2
   memory      = 2048
   net0        = "virtio,bridge=vmbr0"
@@ -21,6 +22,7 @@ resource "proxmox_vm_qemu" "k8s_worker" {
   name        = "k8s-worker-${count.index + 1}"
   target_node = "proxmox-node"
   clone       = "ubuntu24-template-9001"
+  cpu         = "x86-64-v2-AES"
   cores       = 2
   memory      = 2048
   net0        = "virtio,bridge=vmbr0"
