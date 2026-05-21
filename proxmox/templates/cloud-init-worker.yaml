@@ -2,6 +2,15 @@
 # Kubernetes worker node cloud-init configuration
 # This runs at first boot to install K8s and join the cluster
 
+runcmd:
+  # Expand disk partition and filesystem
+  - apt-get update -qq
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-guest-utils
+  - growpart /dev/sda 3 || true
+  - pvresize /dev/sda3 || true
+  - lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv || true
+  - resize2fs /dev/ubuntu-vg/ubuntu-lv || true
+
 write_files:
   - path: /etc/modules-load.d/k8s.conf
     content: |

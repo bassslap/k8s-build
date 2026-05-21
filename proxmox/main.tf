@@ -16,6 +16,12 @@ resource "proxmox_virtual_environment_vm" "k8s_master" {
     dedicated = var.vm_memory
   }
 
+  disk {
+    datastore_id = var.datastore_id
+    size         = var.vm_disk_size
+    interface    = "scsi0"
+  }
+
   network_device {
     bridge = var.network_bridge
   }
@@ -57,6 +63,12 @@ resource "proxmox_virtual_environment_vm" "k8s_worker" {
 
   memory {
     dedicated = var.vm_memory
+  }
+
+  disk {
+    datastore_id = var.datastore_id
+    size         = var.vm_disk_size
+    interface    = "scsi0"
   }
 
   network_device {

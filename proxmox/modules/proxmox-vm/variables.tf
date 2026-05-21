@@ -25,7 +25,7 @@ variable "vm_cpu" {
 variable "vm_disk_size" {
   description = "Disk size for each VM in GB"
   type        = number
-  default     = 20
+  default     = 200
 }
 
 variable "network_bridge" {

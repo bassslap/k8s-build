@@ -131,6 +131,12 @@ variable "vm_disk_size" {
   default     = 20
 }
 
+variable "datastore_id" {
+  description = "The datastore ID where VM disks will be stored."
+  type        = string
+  default     = "local-lvm"
+}
+
 variable "network_bridge" {
   description = "The network bridge to use for the VMs."
   type        = string

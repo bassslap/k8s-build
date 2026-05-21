@@ -57,6 +57,14 @@ write_files:
       echo "[$(date)] K8s master initialization complete!" | tee -a /var/log/k8s-init.log
 
 runcmd:
+  # Expand disk partition and filesystem
+  - apt-get update -qq
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y cloud-guest-utils
+  - growpart /dev/sda 3 || true
+  - pvresize /dev/sda3 || true
+  - lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv || true
+  - resize2fs /dev/ubuntu-vg/ubuntu-lv || true
+  
   # Disable swap permanently
   - swapoff -a
   - sed -i '/swap/d' /etc/fstab

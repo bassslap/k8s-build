@@ -19,6 +19,13 @@ echo ""
 COMMON_SETUP='
 set -euo pipefail
 
+echo "[$(hostname)] Waiting for dpkg locks to be released..."
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+  echo "[$(hostname)] Waiting for other package managers to finish..."
+  sleep 5
+done
+echo "[$(hostname)] Package locks released"
+
 echo "[$(hostname)] Disabling swap permanently..."
 sudo swapoff -a
 sudo sed -i "/swap/d" /etc/fstab
