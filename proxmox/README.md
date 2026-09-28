@@ -67,7 +67,7 @@ sequenceDiagram
     Host->>Workers: Run JOIN_COMMAND
     Host->>Master: Verify nodes and storage classes
   else bootstrap_enabled is false
-    Tofu-->>Operator: VMs created; bootstrap skipped
+    Tofu-->>Operator: VMs created and bootstrap skipped
   end
 ```
 
