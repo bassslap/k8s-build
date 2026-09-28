@@ -41,10 +41,3 @@ output "master_ip" {
 output "worker_ips" {
   value = [for w in proxmox_vm_qemu.k8s_worker : w.ip]
 }
-
-module "kube_bootstrap" {
-  source = "../../modules/kube-bootstrap"
-
-  master_ip = proxmox_vm_qemu.k8s_master.ip
-  worker_ips = [for w in proxmox_vm_qemu.k8s_worker : w.ip]
-}

@@ -1,15 +1,18 @@
 output "master_ip" {
-  value = module.proxmox-vm.master_ip
+  value = proxmox_vm_qemu.k8s_master.ip
 }
 
 output "worker_ips" {
-  value = module.proxmox-vm.worker_ips
+  value = [for worker in proxmox_vm_qemu.k8s_worker : worker.ip]
 }
 
 output "kube_cluster_endpoint" {
-  value = module.kube-bootstrap.cluster_endpoint
+  value = "https://${proxmox_vm_qemu.k8s_master.ip}:6443"
 }
 
 output "kube_nodes" {
-  value = module.kube-bootstrap.node_info
+  value = concat(
+    [proxmox_vm_qemu.k8s_master.ip],
+    [for worker in proxmox_vm_qemu.k8s_worker : worker.ip]
+  )
 }
